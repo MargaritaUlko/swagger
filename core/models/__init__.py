@@ -4,7 +4,13 @@ __all__ = (
     "Company",
     "User",
     "AccessToken",
-    "Task"
+    "Task",
+    "Brand",
+    "Car",
+    "Customer_Car",
+    "Service",
+    "OrderService",
+    "Order"
 )
 
 from .db_helper import db_helper
@@ -13,3 +19,4 @@ from .company import Company
 from .users import User
 from .tasks import Task
 from .access_token import AccessToken
+from .carwash import Brand, Car, Customer_Car, Service, OrderService, Order

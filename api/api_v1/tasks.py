@@ -11,7 +11,7 @@ from crud import tasks as tasks_crud
 
 router = APIRouter(
     prefix=settings.api.v1.tasks,
-    tags=["tasks"],
+    tags=["Tasks"],
 )
 
 @router.get("", response_model=list[TaskInDB])

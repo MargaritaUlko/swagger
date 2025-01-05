@@ -7,6 +7,9 @@ from fastapi.openapi.docs import (
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
+from pydantic_core import ValidationError
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from core.models import db_helper
 

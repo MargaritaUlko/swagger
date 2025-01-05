@@ -15,12 +15,12 @@ class DatabaseHelper:
         self,
         url: str,
         echo: bool = False,
-        future: bool = True,
+        # future: bool = True,
     ) -> None:
         self.engine: AsyncEngine = create_async_engine(
             url=url,
             echo=echo,
-            future=future,
+            # future=future,
         )
         self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=self.engine,
@@ -40,5 +40,5 @@ class DatabaseHelper:
 db_helper = DatabaseHelper(
     url=str(settings.db.url),
     echo=settings.db.echo,
-    future=settings.db.future,
+    # future=settings.db.future,
 )

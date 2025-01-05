@@ -4,7 +4,9 @@ from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
 )
+import logging
 
+logging.basicConfig(level=logging.DEBUG)
 
 class RunConfig(BaseModel):
     host: str = "127.0.0.1"
@@ -17,8 +19,12 @@ class ApiV1Prefix(BaseModel):
     users: str = "/users"
     company: str = "/company"
     tasks: str = "/tasks"
-
-
+    brands: str = "/brands"
+    services: str = "/services"
+    cars: str = "/cars"
+    order_services: str = "/order_services"
+    orders: str = "/orders"
+    customer_cars: str = "/customer_cars"
 class ApiPrefix(BaseModel):
     prefix: str = "/api"
     v1: ApiV1Prefix = ApiV1Prefix()
@@ -51,7 +57,7 @@ class DatabaseConfig(BaseModel):
 class DatabaseConfig_SQLITE(BaseModel):
     url: str
     echo: bool = False
-    future: bool = True
+    # future: bool = True
 
     naming_convention: dict[str, str] = {
         "ix": "ix_%(column_0_label)s",
@@ -83,3 +89,9 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+try:
+    settings = Settings()
+    print("Settings loaded successfully")
+except Exception as e:
+
+    logging.exception("Error loading settings")

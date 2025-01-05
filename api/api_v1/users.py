@@ -1,10 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from api.api_v1.fastapi_users import fastapi_users
 from core.config import settings
 from core.schemas.user import (
     UserRead,
-    UserUpdate,
+    UserUpdate, UserCreate,
 )
 
 router = APIRouter(
