@@ -14,6 +14,7 @@ from core.schemas.carwash import (
     BrandUpdate,
 )
 from crud.carwash import brand as brand_crud
+from crud.carwash.brand import get_filtered_brands
 
 brand_router = APIRouter(
     prefix=settings.api.v1.brands,
@@ -31,19 +32,13 @@ async def get_brands_api(
     order: Optional[str] = Query("asc", regex="^(asc|desc)$"),  # Направление сортировки
     user: User = Depends(check_access([1]))
 ):
-    # Получение всех брендов через CRUD-операцию
-    brands = await brand_crud.get_brands(session=session)
-
-    # Фильтрация по имени
-    if name:
-        brands = [brand for brand in brands if name.lower() in brand.name.lower()]
-
-    # Сортировка
-    if sort_by:
-        if not hasattr(Brand, sort_by):
-            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
-        reverse = order == "desc"
-        brands = sorted(brands, key=lambda brand: getattr(brand, sort_by), reverse=reverse)
+    # Получаем отфильтрованные бренды через функцию
+    brands = await get_filtered_brands(
+        session=session,
+        name=name,
+        sort_by=sort_by,
+        order=order
+    )
 
     # Пагинация
     offset = (page - 1) * limit

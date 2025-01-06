@@ -1,7 +1,14 @@
-from sqlalchemy import select, Sequence
-from sqlalchemy.ext.asyncio import AsyncSession
+from http.client import HTTPException
+from typing import Optional, List
 
-from core.models import Order
+from fastapi import Depends
+from sqlalchemy import select, Sequence
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
+
+from core.authentication.dependecy import check_order_list_access
+from core.models import Order, OrderService, Customer_Car, User
 from core.schemas.carwash import OrderCreate, OrderUpdate
 
 
@@ -20,11 +27,50 @@ async def get_order(session: AsyncSession, order_id: int) -> Order:
     if not order:
         raise ValueError("Order not found")
     return order
+async def get_orders(
+    session: AsyncSession,
+    limit: int = 10,
+    page: int = 1,
+    sort_by: Optional[str] = "id",
+    order: Optional[str] = "asc",
+    status: Optional[int] = None,
+    orders: List[Order] = Depends(check_order_list_access())
+) -> List[Order]:
+    query = select(Order).options(
+        joinedload(Order.employee),
+        joinedload(Order.administrator),
+        joinedload(Order.customer_car).joinedload(Customer_Car.car),
+        joinedload(Order.order_services).joinedload(OrderService.service),
+    )
 
-async def get_orders(session: AsyncSession) -> Sequence[Order]:
-    stmt = select(Order)
-    result = await session.execute(stmt)
-    return result.scalars().all()
+    # Фильтрация по статусу заказа
+    if status is not None:
+        query = query.filter(Order.status == status)
+
+    # Пагинация: смещение на основе страницы и лимита
+    query = query.offset((page - 1) * limit).limit(limit)
+
+    # Получаем все записи с фильтрацией и пагинацией
+    try:
+        result = await session.execute(query)
+    except InvalidRequestError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Извлекаем все результаты из запроса
+    orders = result.unique().scalars().all()
+
+    # Сортировка для всей коллекции
+    if sort_by:
+        # Проверка, что сортировка происходит по существующему полю
+        if not hasattr(Order, sort_by):
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
+
+        # Сортируем данные для всей коллекции
+        reverse = order == "desc"
+        orders = sorted(orders, key=lambda order: getattr(order, sort_by), reverse=reverse)
+
+    return orders
+
 
 async def update_order(session: AsyncSession, order_id: int, order_update: OrderUpdate) -> Order:
     stmt = select(Order).filter(Order.id == order_id)
@@ -40,6 +86,51 @@ async def update_order(session: AsyncSession, order_id: int, order_update: Order
     await session.refresh(order)
     return order
 
+
+
+#
+# async def get_orders(
+#     session: AsyncSession,
+#     limit: int = 10,
+#     page: int = 1,
+#     sort_by: Optional[str] = "id",
+#     order: Optional[str] = "asc",
+#     status: Optional[int] = None
+# ) -> List[Order]:
+#     query = select(Order).options(
+#         joinedload(Order.employee),
+#         joinedload(Order.administrator),
+#         joinedload(Order.customer_car).joinedload(Customer_Car.car),
+#         joinedload(Order.order_services).joinedload(OrderService.service),
+#     )
+#
+#     # Apply filter based on order status
+#     if status is not None:
+#         query = query.filter(Order.status == status)
+#
+#     # Apply pagination: offset based on page and limit
+#     query = query.offset((page - 1) * limit).limit(limit)
+#
+#     # Execute query and get the results
+#     try:
+#         result = await session.execute(query)
+#     except InvalidRequestError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#
+#     # Extract all the orders from the result
+#     orders = result.unique().scalars().all()
+#
+#     # Sort orders for the entire collection
+#     if sort_by:
+#         # Validate sort_by field exists
+#         if not hasattr(Order, sort_by):
+#             raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
+#
+#         # Sort data for the entire collection
+#         reverse = order == "desc"
+#         orders = sorted(orders, key=lambda order: getattr(order, sort_by), reverse=reverse)
+#
+#     return orders
 async def delete_order(session: AsyncSession, order_id: int) -> Order:
     stmt = select(Order).filter(Order.id == order_id)
     result = await session.execute(stmt)

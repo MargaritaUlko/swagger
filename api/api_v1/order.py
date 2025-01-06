@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import current_user
-
+import asyncio
 from core.authentication.dependecy import check_access, check_order_list_access, check_order_by_id
 from core.config import settings
 from core.models import db_helper, Order, User
@@ -19,37 +19,29 @@ order_router = APIRouter(
 
 # Customer_car - в ней поиск по моделям машины
 
-# Получение списка всех заказов
-
-
-@order_router.get("", response_model=list[OrderRead])
+@order_router.get("/orders", response_model=List[OrderRead])
 async def api_get_orders(
-        limit: int = Query(10, ge=1),
-        page: int = Query(1, ge=1),
-        sort_by: Optional[str] = Query("id", regex="^(id|start_date)$"),
-        order: Optional[str] = Query("asc", regex="^(asc|desc)$"),
-        status: Optional[int] = Query(None, ge=0, le=1),
-        orders: list[Order] = Depends(check_order_list_access()),
+    session: AsyncSession = Depends(db_helper.session_getter),
+    limit: int = Query(10, ge=1),
+    page: int = Query(1, ge=1),
+    sort_by: Optional[str] = Query("id", regex="^(id|start_date)$"),
+    order: Optional[str] = Query("asc", regex="^(asc|desc)$"),
+    status: Optional[int] = Query(None, ge=0, le=1),
+    orders: List[Order] = Depends(check_order_list_access())
 ):
+    orders = await get_orders(
+        session,
+        limit=limit,
+        page=page,
+        sort_by=sort_by,
+        order=order,
+        status=status,
+    )
 
-    if status is not None:
-        orders = [order for order in orders if order.status == status]
+    # Асинхронная обработка
+    serialized_orders = [await OrderRead.from_orm(order) for order in orders]
 
-
-    if sort_by:
-
-        if not hasattr(Order, sort_by):
-            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
-
-
-        reverse = order == "desc"
-        orders = sorted(orders, key=lambda order: getattr(order, sort_by), reverse=reverse)
-
-
-    offset = (page - 1) * limit
-    orders_paginated = orders[offset:offset + limit]
-
-    return orders_paginated
+    return serialized_orders
 
 
 # Получение информации о заказе по id

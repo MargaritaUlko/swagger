@@ -1,0 +1,45 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.env
+.env.*
+
+# Virtual environments
+venv/
+env/
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+*.out
+
+# Database
+*.sqlite3
+
+# Docker
+*.pid
+*.seed
+
+# Pytest cache
+.pytest_cache/
+.tox/
+.cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Static files
+staticfiles/
+
+# Migrations
+migrations/

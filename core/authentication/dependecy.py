@@ -24,7 +24,27 @@ def check_access(allowed_roles: List[int]):
         return user
     return dependency
 
-
+# def check_order_list_access() -> Callable[..., Awaitable[list[Order]]]:
+#     async def dependency(
+#         session: AsyncSession = Depends(db_helper.session_getter),
+#         user: User = Depends(fastapi_users.current_user()),
+#     ):
+#         # Логика фильтрации
+#         query = select(Order).filter(
+#             or_(
+#                 Order.employee_id == user.id,
+#                 Order.administrator_id == user.id,
+#                 Order.customer_car_id.in_(
+#                     select(Customer_Car.id).filter(Customer_Car.customer_id == user.id)
+#                 ),
+#             )
+#         )
+#         result = await session.execute(query)
+#         orders = result.scalars().all()
+#
+#         return orders
+#
+#     return dependency
 
 def check_order_list_access() -> Callable[..., Awaitable[list[Order]]]:
     async def dependency(

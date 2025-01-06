@@ -8,6 +8,7 @@ from core.config import settings
 from core.models import db_helper, OrderService, User
 from crud.carwash import order_service as order_service_crud
 from core.schemas.carwash import OrderServiceCreate, OrderServiceRead, OrderServiceUpdate
+from crud.carwash.order_service import get_order_services
 
 order_service_router = APIRouter(
     prefix=settings.api.v1.order_services,
@@ -26,27 +27,21 @@ async def api_get_order_services(
     orders: list[OrderService] = Depends(check_order_list_access22()),  # Получаем доступ к заказам пользователя
 ):
     # Используем только те заказы, которые были отфильтрованы в check_order_list_access22
-    order_services = orders
 
-    # Фильтрация по order_id (если передан параметр)
-    if order_id is not None:
-        order_services = [service for service in order_services if service.order_id == order_id]
-
-    # Сортировка для всей коллекции
-    if sort_by:
-        # Проверка, что сортировка происходит по существующему полю
-        if not hasattr(OrderService, sort_by):
-            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
-
-        # Сортируем данные для всей коллекции
-        reverse = order == "desc"
-        order_services = sorted(order_services, key=lambda service: getattr(service, sort_by), reverse=reverse)
+    order_services = await get_order_services(
+        session=session,
+        orders=orders,
+        order_id=order_id,
+        sort_by=sort_by,
+        order=order
+    )
 
     # Пагинация
     offset = (page - 1) * limit
     order_services_paginated = order_services[offset:offset + limit]
 
     return order_services_paginated
+
 
 
 

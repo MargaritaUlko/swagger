@@ -1,3 +1,6 @@
+from typing import Optional
+
+from fastapi import HTTPException, Query
 from sqlalchemy import select, Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,11 +22,29 @@ async def get_brand(session: AsyncSession, brand_id: int) -> Brand:
     if not brand:
         raise ValueError("Brand not found")
     return brand
-
-async def get_brands(session: AsyncSession) -> Sequence[Brand]:
+async def get_filtered_brands(
+    session: AsyncSession,
+    name: Optional[str] = None,
+    sort_by: Optional[str] = Query("id", regex="^(id|name)$"),  # Поле для сортировки
+    order: Optional[str] = Query("asc", regex="^(asc|desc)$"),  # Направление сортировки
+) -> list[Brand]:
+    # Получаем все бренды из базы данных
     stmt = select(Brand)
     result = await session.execute(stmt)
-    return result.scalars().all()
+    brands = result.scalars().all()
+
+    # Фильтрация по имени
+    if name:
+        brands = [brand for brand in brands if name.lower() in brand.name.lower()]
+
+    # Сортировка
+    if sort_by:
+        if not hasattr(Brand, sort_by):
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
+        reverse = order == "desc"
+        brands = sorted(brands, key=lambda brand: getattr(brand, sort_by), reverse=reverse)
+
+    return brands
 
 async def update_brand(session: AsyncSession, brand_id: int, brand_update: BrandUpdate) -> Brand:
     stmt = select(Brand).filter(Brand.id == brand_id)

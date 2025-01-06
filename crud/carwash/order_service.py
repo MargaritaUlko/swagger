@@ -1,5 +1,6 @@
 # CRUD Operations for OrderService
 from datetime import timedelta, datetime
+from typing import Optional
 
 from fastapi import HTTPException
 from sqlalchemy import select, Sequence
@@ -175,10 +176,30 @@ async def get_order_service(session: AsyncSession, order_service_id: int) -> Ord
         raise ValueError("OrderService not found")
     return order_service
 
-async def get_order_services(session: AsyncSession) -> Sequence[OrderService]:
-    stmt = select(OrderService)
-    result = await session.execute(stmt)
-    return result.scalars().all()
+async def get_order_services(
+    session: AsyncSession,
+    orders: list[OrderService],  # Фильтрованные заказы пользователя
+    order_id: Optional[int] = None,
+    sort_by: Optional[str] = "id",
+    order: Optional[str] = "asc"
+) -> Sequence[OrderService]:
+    order_services = orders
+
+    # Фильтрация по order_id (если передан параметр)
+    if order_id is not None:
+        order_services = [service for service in order_services if service.order_id == order_id]
+
+    # Сортировка для всей коллекции
+    if sort_by:
+        # Проверка, что сортировка происходит по существующему полю
+        if not hasattr(OrderService, sort_by):
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
+
+        # Сортируем данные для всей коллекции
+        reverse = order == "desc"
+        order_services = sorted(order_services, key=lambda service: getattr(service, sort_by), reverse=reverse)
+
+    return order_services
 
 async def update_order_service(session: AsyncSession, order_service_id: int, order_service_update: OrderServiceUpdate) -> OrderService:
     stmt = select(OrderService).filter(OrderService.id == order_service_id)

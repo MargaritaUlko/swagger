@@ -110,9 +110,51 @@ class OrderCreate(OrderBase):
     def enforce_status(cls, values):
             values["status"] = 1  # Принудительно устанавливаем статус
             return values
-class OrderRead(OrderBase):
+class OrderRead(BaseModel):
     id: int
+    status: int
+    start_date: datetime
+    end_date: datetime
+    administrator_id: int
+    customer_car_id: int
+    employee_id: int
+    services: list[ServiceRead]
+    car: Optional[str]
+    employee_name: Optional[str]
+    administrator_name: Optional[str]
 
+
+
+    @classmethod
+    async def from_orm(cls, obj: Order) -> "OrderRead":
+        # Do not await obj.order_services. It is already lazy-loaded.
+        services = [
+            ServiceRead.from_orm(service.service)
+            for service in obj.order_services  # Access the relation directly without await
+        ]
+        car_model = obj.customer_car.car.model if obj.customer_car and obj.customer_car.car else None
+        employee_name = (
+            f"{obj.employee.first_name} {obj.employee.last_name}"
+            if obj.employee else None
+        )
+        administrator_name = (
+            f"{obj.administrator.first_name} {obj.administrator.last_name}"
+            if obj.administrator else None
+        )
+
+        return cls(
+            id=obj.id,
+            status=obj.status,
+            start_date=obj.start_date,
+            end_date=obj.end_date,
+            administrator_id=obj.administrator_id,
+            customer_car_id=obj.customer_car_id,
+            employee_id=obj.employee_id,
+            services=services,
+            car=car_model,
+            employee_name=employee_name,
+            administrator_name=administrator_name,
+        )
 
 
 # class CustomerCarRead(CustomerCarBase):
