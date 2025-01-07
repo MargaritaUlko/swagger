@@ -46,38 +46,34 @@ def check_access(allowed_roles: List[int]):
 #
 #     return dependency
 
-def check_order_list_access() -> Callable[..., Awaitable[list[Order]]]:
-    async def dependency(
-        session: AsyncSession = Depends(db_helper.session_getter),
-        user: User = Depends(fastapi_users.current_user()),
-    ):
-        logger.info(f"User ID: {user.id}")
+async def check_order_list_access(
+    session: AsyncSession = Depends(db_helper.session_getter),
+    user: User = Depends(fastapi_users.current_user())
+) -> List[Order]:
+    logger.info(f"User ID: {user.id}")
 
-        query = select(Order).filter(
-            or_(
-                Order.employee_id == user.id,
-                Order.administrator_id == user.id,
-                Order.customer_car_id.in_(
-                    select(Customer_Car.id).filter(Customer_Car.customer_id == user.id)
-                ),
-            )
+    query = select(Order).filter(
+        or_(
+            Order.employee_id == user.id,
+            Order.administrator_id == user.id,
+            Order.customer_car_id.in_(
+                select(Customer_Car.id).filter(Customer_Car.customer_id == user.id)
+            ),
         )
-        compiled_query = query.compile(compile_kwargs={"literal_binds": True})
-        logger.info(f"Compiled SQL Query: {compiled_query}")
+    )
+    compiled_query = query.compile(compile_kwargs={"literal_binds": True})
+    logger.info(f"Compiled SQL Query: {compiled_query}")
 
-        result = await session.execute(query)
-        orders = result.scalars().all()
+    result = await session.execute(query)
+    orders = result.scalars().all()
 
-        for order in orders:
-            logger.info(
-                f"Order id {order.id}: employee_id={order.employee_id}, "
-                f"administrator_id={order.administrator_id}, customer_car_id={order.customer_car_id}"
-            )
+    for order in orders:
+        logger.info(
+            f"Order id {order.id}: employee_id={order.employee_id}, "
+            f"administrator_id={order.administrator_id}, customer_car_id={order.customer_car_id}"
+        )
 
-        return orders
-
-    return dependency
-
+    return orders
 
 def check_order_list_access22() -> Callable[..., Awaitable[list[OrderService]]]:
     async def dependency(

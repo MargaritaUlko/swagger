@@ -1,5 +1,5 @@
 from http.client import HTTPException
-from typing import Optional, List
+from typing import Optional, List, Callable, Awaitable
 
 from fastapi import Depends
 from sqlalchemy import select, Sequence
@@ -34,38 +34,45 @@ async def get_orders(
     sort_by: Optional[str] = "id",
     order: Optional[str] = "asc",
     status: Optional[int] = None,
-    orders: List[Order] = Depends(check_order_list_access())
+    orders: List[Order] = Depends(check_order_list_access)  # Здесь зависимость
 ) -> List[Order]:
-    query = select(Order).options(
-        joinedload(Order.employee),
-        joinedload(Order.administrator),
-        joinedload(Order.customer_car).joinedload(Customer_Car.car),
-        joinedload(Order.order_services).joinedload(OrderService.service),
+    # Теперь orders уже является списком заказов
+    if not orders:
+        return []  # Возвращаем пустой список, если заказов нет
+
+    accessible_order_ids = [order.id for order in orders]
+
+    # Основной запрос с прогрузкой связанных объектов
+    query = (
+        select(Order)
+        .filter(Order.id.in_(accessible_order_ids))  # Фильтрация доступных заказов
+        .options(
+            joinedload(Order.employee),
+            joinedload(Order.administrator),
+            joinedload(Order.customer_car).joinedload(Customer_Car.car),
+            joinedload(Order.order_services).joinedload(OrderService.service),
+        )
     )
 
     # Фильтрация по статусу заказа
     if status is not None:
         query = query.filter(Order.status == status)
 
-    # Пагинация: смещение на основе страницы и лимита
+    # Пагинация
     query = query.offset((page - 1) * limit).limit(limit)
 
-    # Получаем все записи с фильтрацией и пагинацией
     try:
         result = await session.execute(query)
     except InvalidRequestError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Извлекаем все результаты из запроса
+    # Извлекаем заказы
     orders = result.unique().scalars().all()
 
-    # Сортировка для всей коллекции
+    # Сортировка
     if sort_by:
-        # Проверка, что сортировка происходит по существующему полю
         if not hasattr(Order, sort_by):
             raise HTTPException(status_code=400, detail=f"Invalid sort_by value: {sort_by}")
-
-        # Сортируем данные для всей коллекции
         reverse = order == "desc"
         orders = sorted(orders, key=lambda order: getattr(order, sort_by), reverse=reverse)
 
