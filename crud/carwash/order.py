@@ -34,11 +34,10 @@ async def get_orders(
     sort_by: Optional[str] = "id",
     order: Optional[str] = "asc",
     status: Optional[int] = None,
-    orders: List[Order] = Depends(check_order_list_access)  # Здесь зависимость
+    orders: List[Order] = Depends(check_order_list_access)
 ) -> List[Order]:
-    # Теперь orders уже является списком заказов
     if not orders:
-        return []  # Возвращаем пустой список, если заказов нет
+        return []
 
     accessible_order_ids = [order.id for order in orders]
 

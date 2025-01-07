@@ -27,7 +27,7 @@ async def api_get_orders(
     sort_by: Optional[str] = Query("id", regex="^(id|start_date)$"),
     order: Optional[str] = Query("asc", regex="^(asc|desc)$"),
     status: Optional[int] = Query(None, ge=0, le=1),
-    orders: List[Order] = Depends(check_order_list_access())
+    orders: List[Order] = Depends(check_order_list_access)
 ):
     orders = await get_orders(
         session,
